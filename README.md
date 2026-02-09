@@ -381,6 +381,8 @@ picoclaw agent -m "Hello"
 
 PRs welcome! The codebase is intentionally small and readable. 🤗
 
+discord:  https://discord.gg/V4sAZ9XWpN
+
 <img src="assets/wechat.png" alt="PicoClaw" width="512">
 
 
