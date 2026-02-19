@@ -144,5 +144,30 @@
   "gateway": {
     "host": "0.0.0.0",
     "port": 18790
+  },
+  "observability": {
+    "log_file": "",
+    "log_level": "info",
+    "enable_tracing": true,
+    "trace_recorder": "default",
+    "component_levels": {},
+    "debug_components": []
+  },
+  "mcp": {
+    "servers": [
+      {
+        "name": "filesystem",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"],
+        "enabled": false
+      },
+      {
+        "name": "github",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": ["GITHUB_TOKEN=ghp_your_token_here"],
+        "enabled": false
+      }
+    ]
   }
 }

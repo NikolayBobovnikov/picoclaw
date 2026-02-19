@@ -120,3 +120,8 @@ For example:
 - `PICOCLAW_TOOLS_CRON_EXEC_TIMEOUT_MINUTES=10`
 
 Note: Array-type environment variables are not currently supported and must be set via the config file.
+
+## Related Documentation
+
+- [Observability Documentation](observability.md) - Learn about logging, tracing, and debugging
+- [MCP Documentation](mcp.md) - Learn about Model Context Protocol integration

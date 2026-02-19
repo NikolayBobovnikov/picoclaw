@@ -33,6 +33,8 @@ import (
 	"github.com/sipeed/picoclaw/pkg/heartbeat"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/migrate"
+	observabilityfilter "github.com/sipeed/picoclaw/pkg/observability/filter"
+	"github.com/sipeed/picoclaw/pkg/observability/debug"
 	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/skills"
 	"github.com/sipeed/picoclaw/pkg/state"
@@ -142,6 +144,10 @@ func main() {
 		authCmd()
 	case "cron":
 		cronCmd()
+	case "logs":
+		logsCmd()
+	case "debug":
+		debugCmd()
 	case "skills":
 		if len(os.Args) < 3 {
 			skillsHelp()
@@ -212,6 +218,8 @@ func printHelp() {
 	fmt.Println("  status      Show picoclaw status")
 	fmt.Println("  cron        Manage scheduled tasks")
 	fmt.Println("  migrate     Migrate from OpenClaw to PicoClaw")
+	fmt.Println("  logs        View and filter logs")
+	fmt.Println("  debug       Manage debug levels")
 	fmt.Println("  skills      Manage skills (install, list, remove)")
 	fmt.Println("  version     Show version information")
 }
@@ -1430,4 +1438,280 @@ func skillsShowCmd(loader *skills.SkillsLoader, skillName string) {
 	fmt.Printf("\n📦 Skill: %s\n", skillName)
 	fmt.Println("----------------------")
 	fmt.Println(content)
+}
+
+func logsCmd() {
+	logFile := ""
+	component := ""
+	level := ""
+	session := ""
+	since := ""
+	tail := false
+
+	args := os.Args[2:]
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--file", "-f":
+			if i+1 < len(args) {
+				logFile = args[i+1]
+				i++
+			}
+		case "--component", "-c":
+			if i+1 < len(args) {
+				component = args[i+1]
+				i++
+			}
+		case "--level", "-l":
+			if i+1 < len(args) {
+				level = args[i+1]
+				i++
+			}
+		case "--session", "-s":
+			if i+1 < len(args) {
+				session = args[i+1]
+				i++
+			}
+		case "--since":
+			if i+1 < len(args) {
+				since = args[i+1]
+				i++
+			}
+		case "--tail", "-t":
+			tail = true
+		case "--help", "-h":
+			logsHelp()
+			return
+		}
+	}
+
+	// Determine log file path
+	if logFile == "" {
+		cfg, err := loadConfig()
+		if err == nil && cfg.Observability.LogFile != "" {
+			logFile = cfg.Observability.LogFile
+		} else {
+			home, _ := os.UserHomeDir()
+			logFile = filepath.Join(home, ".picoclaw", "picoclaw.log")
+		}
+	}
+
+	// Check if log file exists
+	if _, err := os.Stat(logFile); os.IsNotExist(err) {
+		fmt.Printf("Log file not found: %s\n", logFile)
+		fmt.Println("Run picoclaw with logging enabled first.")
+		return
+	}
+
+	// Build filter
+	filter := observabilityfilter.LogFilter{
+		Component: component,
+		Level:     level,
+		Session:   session,
+		Since:     since,
+		Tail:      tail,
+	}
+
+	// Filter logs
+	entries, err := observabilityfilter.FilterLogs(logFile, filter)
+	if err != nil {
+		fmt.Printf("Error reading log file: %v\n", err)
+		os.Exit(1)
+	}
+
+	if len(entries) == 0 {
+		fmt.Println("No log entries match the specified criteria.")
+		return
+	}
+
+	// Print formatted entries
+	for _, entry := range entries {
+		fmt.Println(observabilityfilter.FormatLogEntry(entry))
+	}
+}
+
+func logsHelp() {
+	fmt.Println("\nLogs commands:")
+	fmt.Println("  View and filter picoclaw logs")
+	fmt.Println()
+	fmt.Println("Usage: picoclaw logs [options]")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  --file, -f <path>      Log file path (default: ~/.picoclaw/picoclaw.log)")
+	fmt.Println("  --component, -c <name> Filter by component name")
+	fmt.Println("  --level, -l <level>    Filter by level (debug, info, warn, error)")
+	fmt.Println("  --session, -s <key>    Filter by session key")
+	fmt.Println("  --since <duration>     Show logs since duration (e.g., 1h, 30m)")
+	fmt.Println("  --tail, -t             Show only the last 100 entries")
+	fmt.Println("  --help, -h             Show this help message")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  picoclaw logs")
+	fmt.Println("  picoclaw logs --component agent")
+	fmt.Println("  picoclaw logs --level error --tail")
+	fmt.Println("  picoclaw logs --since 1h")
+	fmt.Println("  picoclaw logs --session cli:default")
+}
+
+func debugCmd() {
+	if len(os.Args) < 3 {
+		debugHelp()
+		return
+	}
+
+	subcommand := os.Args[2]
+
+	switch subcommand {
+	case "set":
+		debugSetCmd()
+	case "get":
+		debugGetCmd()
+	case "list":
+		debugListCmd()
+	case "clear":
+		debugClearCmd()
+	case "--help", "-h":
+		debugHelp()
+	default:
+		fmt.Printf("Unknown debug command: %s\n", subcommand)
+		debugHelp()
+	}
+}
+
+func debugSetCmd() {
+	component := ""
+	level := ""
+	levelStr := ""
+
+	args := os.Args[3:]
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--component", "-c":
+			if i+1 < len(args) {
+				component = args[i+1]
+				i++
+			}
+		case "--level", "-l":
+			if i+1 < len(args) {
+				levelStr = args[i+1]
+				i++
+			}
+		}
+	}
+
+	if component == "" {
+		fmt.Println("Error: --component is required")
+		debugHelp()
+		return
+	}
+
+	if levelStr == "" {
+		fmt.Println("Error: --level is required")
+		debugHelp()
+		return
+	}
+
+	level = debug.ParseLevel(levelStr).String()
+	if level == "info" && levelStr != "info" && levelStr != "Info" {
+		fmt.Printf("Warning: Invalid level '%s', using 'info'\n", levelStr)
+	}
+
+	debug.SetGlobalComponentLevel(component, debug.ParseLevel(levelStr))
+	fmt.Printf("✓ Set debug level for '%s' to %s\n", component, level)
+}
+
+func debugGetCmd() {
+	component := ""
+
+	args := os.Args[3:]
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--component", "-c":
+			if i+1 < len(args) {
+				component = args[i+1]
+				i++
+			}
+		}
+	}
+
+	if component == "" {
+		fmt.Println("Error: --component is required")
+		debugHelp()
+		return
+	}
+
+	level := debug.GetGlobalComponentLevel(component)
+	fmt.Printf("Debug level for '%s': %s\n", component, level.String())
+}
+
+func debugListCmd() {
+	components := debug.GetDebugConfig()
+	fmt.Println("\nDebug Configuration:")
+	fmt.Println("---------------------")
+
+	defaultLevel := components["default"].(string)
+	fmt.Printf("Default level: %s\n", defaultLevel)
+
+	componentLevels := components["components"].(map[string]string)
+	if len(componentLevels) > 0 {
+		fmt.Println("\nComponent overrides:")
+		for component, level := range componentLevels {
+			fmt.Printf("  %s: %s\n", component, level)
+		}
+	} else {
+		fmt.Println("\nNo component overrides set.")
+	}
+}
+
+func debugClearCmd() {
+	component := ""
+
+	args := os.Args[3:]
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--component", "-c":
+			if i+1 < len(args) {
+				component = args[i+1]
+				i++
+			}
+		}
+	}
+
+	if component == "" {
+		fmt.Println("Error: --component is required")
+		debugHelp()
+		return
+	}
+
+	debug.SetGlobalComponentLevel(component, debug.InfoLevel)
+	fmt.Printf("✓ Cleared debug level for '%s' (reverted to default)\n", component)
+}
+
+func debugHelp() {
+	fmt.Println("\nDebug commands:")
+	fmt.Println("  Manage per-component debug levels")
+	fmt.Println()
+	fmt.Println("Usage: picoclaw debug <command> [options]")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  set       Set debug level for a component")
+	fmt.Println("  get       Get debug level for a component")
+	fmt.Println("  list      List all debug level settings")
+	fmt.Println("  clear     Clear debug level for a component (revert to default)")
+	fmt.Println()
+	fmt.Println("Set options:")
+	fmt.Println("  --component, -c <name>  Component name (required)")
+	fmt.Println("  --level, -l <level>     Debug level: trace, debug, info, warn, error")
+	fmt.Println()
+	fmt.Println("Get/Clear options:")
+	fmt.Println("  --component, -c <name>  Component name (required)")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  picoclaw debug set --component agent --level debug")
+	fmt.Println("  picoclaw debug set --component tools --level trace")
+	fmt.Println("  picoclaw debug get --component agent")
+	fmt.Println("  picoclaw debug list")
+	fmt.Println("  picoclaw debug clear --component agent")
+	fmt.Println()
+	fmt.Println("Common components:")
+	fmt.Println("  agent, tools, skills, channels, gateway, cron, heartbeat")
 }

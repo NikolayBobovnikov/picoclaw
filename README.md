@@ -809,6 +809,8 @@ picoclaw agent -m "Hello"
 | `picoclaw status`         | Show status                   |
 | `picoclaw cron list`      | List all scheduled jobs       |
 | `picoclaw cron add ...`   | Add a scheduled job           |
+| `picoclaw logs`           | View and filter logs          |
+| `picoclaw debug`          | Manage debug levels           |
 
 ### Scheduled Tasks / Reminders
 
@@ -883,3 +885,100 @@ This happens when another instance of the bot is running. Make sure only one `pi
 | **Zhipu**        | 200K tokens/month   | Best for Chinese users                |
 | **Brave Search** | 2000 queries/month  | Web search functionality              |
 | **Groq**         | Free tier available | Fast inference (Llama, Mixtral)       |
+
+## 🔍 Observability
+
+PicoClaw includes comprehensive observability features for monitoring, debugging, and understanding agent behavior.
+
+### Features
+
+- **Structured Logging** - JSON-formatted logs with contextual fields
+- **Distributed Tracing** - Request tracking with trace IDs and span tracking
+- **Debug Mode** - Per-component log level control
+- **Log Filtering** - Filter logs by component, trace ID, session, and more
+
+### Configuration
+
+Add to `~/.picoclaw/config.json`:
+
+```json
+{
+  "observability": {
+    "log_file": "/var/log/picoclaw/picoclaw.log",
+    "log_level": "info",
+    "enable_tracing": true,
+    "component_levels": {
+      "mcp.client": "debug",
+      "agent.loop": "trace"
+    }
+  }
+}
+```
+
+### Usage
+
+```bash
+# View logs
+picoclaw logs
+
+# Filter by component
+picoclaw logs --component mcp.client
+
+# Trace a request
+picoclaw logs --trace-id abc123-def456-...
+
+# Set debug level
+picoclaw debug set --components mcp.client --level debug
+
+# Show debug configuration
+picoclaw debug show
+```
+
+**[Complete Observability Documentation](docs/observability.md)**
+
+## 🔌 Model Context Protocol (MCP)
+
+PicoClaw supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) for extending agent capabilities with external tools.
+
+### Features
+
+- **Filesystem Access** - Read/write files on your system
+- **Database Queries** - Query PostgreSQL, SQLite, and other databases
+- **GitHub Integration** - Interact with repositories, issues, and PRs
+- **Custom Tools** - Any tool provided by MCP servers
+
+### Configuration
+
+Add to `~/.picoclaw/config.json`:
+
+```json
+{
+  "mcp": {
+    "servers": [
+      {
+        "name": "filesystem",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"],
+        "enabled": true
+      },
+      {
+        "name": "github",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": ["GITHUB_TOKEN=ghp_your_token_here"],
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+### Available MCP Servers
+
+- **@modelcontextprotocol/server-filesystem** - File system operations
+- **@modelcontextprotocol/server-github** - GitHub API integration
+- **@modelcontextprotocol/server-postgres** - PostgreSQL database queries
+- **@modelcontextprotocol/server-sqlite** - SQLite database queries
+- **@modelcontextprotocol/server-brave-search** - Web search via Brave
+
+**[Complete MCP Documentation](docs/mcp.md)**
