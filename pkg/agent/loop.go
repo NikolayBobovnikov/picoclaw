@@ -21,6 +21,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/constants"
 	"github.com/sipeed/picoclaw/pkg/logger"
+	"github.com/sipeed/picoclaw/pkg/mcp"
 	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/routing"
 	"github.com/sipeed/picoclaw/pkg/state"
@@ -37,6 +38,7 @@ type AgentLoop struct {
 	summarizing    sync.Map
 	fallback       *providers.FallbackChain
 	channelManager *channels.Manager
+	mcpManager     MCPManager
 }
 
 // processOptions configures how a message is processed
@@ -49,6 +51,12 @@ type processOptions struct {
 	EnableSummary   bool   // Whether to trigger summarization
 	SendResponse    bool   // Whether to send response via bus
 	NoHistory       bool   // If true, don't load session history (for heartbeat)
+}
+
+// MCPManager defines the interface for MCP manager integration
+type MCPManager interface {
+	Start(ctx context.Context) error
+	Stop()
 }
 
 func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers.LLMProvider) *AgentLoop {
@@ -68,6 +76,12 @@ func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers
 		stateManager = state.NewManager(defaultAgent.Workspace)
 	}
 
+	// Initialize MCP manager (will be started in Run)
+	var mcpManager MCPManager
+	if defaultAgent != nil {
+		mcpManager = mcp.NewManager(cfg, defaultAgent.Tools)
+	}
+
 	return &AgentLoop{
 		bus:         msgBus,
 		cfg:         cfg,
@@ -75,6 +89,7 @@ func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers
 		state:       stateManager,
 		summarizing: sync.Map{},
 		fallback:    fallbackChain,
+		mcpManager:  mcpManager,
 	}
 }
 
@@ -134,6 +149,19 @@ func registerSharedTools(cfg *config.Config, msgBus *bus.MessageBus, registry *A
 
 func (al *AgentLoop) Run(ctx context.Context) error {
 	al.running.Store(true)
+
+	// Start MCP connections
+	if al.mcpManager != nil {
+		if err := al.mcpManager.Start(ctx); err != nil {
+			logger.ErrorCF("agent", "Failed to start MCP manager",
+				map[string]interface{}{"error": err})
+		}
+		defer func() {
+			if al.mcpManager != nil {
+				al.mcpManager.Stop()
+			}
+		}()
+	}
 
 	for al.running.Load() {
 		select {

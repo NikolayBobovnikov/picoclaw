@@ -11,8 +11,24 @@ import (
 	"sync"
 
 	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/mcp"
 )
+
+// RPCMessage represents a generic JSON-RPC message for transport
+type RPCMessage struct {
+	JSONRPC string          `json:"jsonrpc"`
+	ID      int64           `json:"id"`
+	Method  string          `json:"method,omitempty"`
+	Params  interface{}     `json:"params,omitempty"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Error   *RPCError       `json:"error,omitempty"`
+}
+
+// RPCError represents a JSON-RPC error
+type RPCError struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data,omitempty"`
+}
 
 // STDIOTransport handles communication with MCP servers via STDIO
 type STDIOTransport struct {
@@ -87,7 +103,7 @@ func (t *STDIOTransport) logStderr() {
 }
 
 // Send sends a JSON-RPC request to the MCP server
-func (t *STDIOTransport) Send(ctx context.Context, req *mcp.JSONRPCRequest) error {
+func (t *STDIOTransport) Send(ctx context.Context, req interface{}) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -114,7 +130,7 @@ func (t *STDIOTransport) Send(ctx context.Context, req *mcp.JSONRPCRequest) erro
 }
 
 // Receive receives a JSON-RPC response from the MCP server
-func (t *STDIOTransport) Receive(ctx context.Context) (*mcp.JSONRPCResponse, error) {
+func (t *STDIOTransport) Receive(ctx context.Context) (*RPCMessage, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -132,7 +148,7 @@ func (t *STDIOTransport) Receive(ctx context.Context) (*mcp.JSONRPCResponse, err
 
 	logger.DebugC("mcp.transport", fmt.Sprintf("Received: %s", line))
 
-	var resp mcp.JSONRPCResponse
+	var resp RPCMessage
 	if err := json.Unmarshal([]byte(line), &resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
