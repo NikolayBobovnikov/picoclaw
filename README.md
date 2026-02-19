@@ -193,7 +193,7 @@ docker compose --profile gateway up -d
 
 > [!TIP]
 > Set your API key in `~/.picoclaw/config.json`.
-> Get API keys: [OpenRouter](https://openrouter.ai/keys) (LLM) · [Zhipu](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) (LLM)
+> Get API keys: [OpenRouter](https://openrouter.ai/keys) (LLM) · [Zhipu](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) (LLM) · [Z.ai](https://z.ai) (LLM)
 > Web search is **optional** - get free [Brave Search API](https://brave.com/search/api) (2000 free queries/month) or use built-in auto fallback.
 
 **1. Initialize**
@@ -239,7 +239,7 @@ picoclaw onboard
 
 **3. Get API Keys**
 
-* **LLM Provider**: [OpenRouter](https://openrouter.ai/keys) · [Zhipu](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) · [Anthropic](https://console.anthropic.com) · [OpenAI](https://platform.openai.com) · [Gemini](https://aistudio.google.com/api-keys)
+* **LLM Provider**: [OpenRouter](https://openrouter.ai/keys) · [Zhipu](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) · [Z.ai](https://z.ai) · [Anthropic](https://console.anthropic.com) · [OpenAI](https://platform.openai.com) · [Gemini](https://aistudio.google.com/api-keys)
 * **Web Search** (optional): [Brave Search](https://brave.com/search/api) - Free tier available (2000 requests/month)
 
 > **Note**: See `config.example.json` for a complete configuration template.
@@ -673,6 +673,7 @@ The subagent has access to tools (message, web_search, etc.) and can communicate
 | -------------------------- | --------------------------------------- | ------------------------------------------------------ |
 | `gemini`                   | LLM (Gemini direct)                     | [aistudio.google.com](https://aistudio.google.com)     |
 | `zhipu`                    | LLM (Zhipu direct)                      | [bigmodel.cn](bigmodel.cn)                             |
+| `zai`                      | LLM (Z.ai GLM models)                   | [z.ai](https://z.ai)                                   |
 | `openrouter(To be tested)` | LLM (recommended, access to all models) | [openrouter.ai](https://openrouter.ai)                 |
 | `anthropic(To be tested)`  | LLM (Claude direct)                     | [console.anthropic.com](https://console.anthropic.com) |
 | `openai(To be tested)`     | LLM (GPT direct)                        | [platform.openai.com](https://platform.openai.com)     |
@@ -723,6 +724,47 @@ This keeps the runtime lightweight while making new OpenAI-compatible backends m
 ```bash
 picoclaw agent -m "Hello"
 ```
+
+</details>
+
+<details>
+<summary><b>Z.ai</b>
+
+**1. Get API key and base URL**
+
+* Get [API key](https://z.ai)
+
+**2. Configure**
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "workspace": "~/.picoclaw/workspace",
+      "model": "glm-4-plus",
+      "max_tokens": 8192,
+      "temperature": 0.7,
+      "max_tool_iterations": 20
+    }
+  },
+  "providers": {
+    "zai": {
+      "api_key": "${ZAI_API_KEY}",
+      "api_base": "https://api.z.ai/api/coding/paas/v4/chat/completions"
+    }
+  }
+}
+```
+
+**3. Run**
+
+```bash
+picoclaw agent -m "Hello"
+```
+
+**Available Models**: `glm-4-plus`, `glm-4-flash`, `glm-4-air`, `glm-4v`, `glm-4-long`
+
+For complete documentation, see [docs/zai.md](docs/zai.md)
 
 </details>
 
@@ -883,6 +925,7 @@ This happens when another instance of the bot is running. Make sure only one `pi
 | ---------------- | ------------------- | ------------------------------------- |
 | **OpenRouter**   | 200K tokens/month   | Multiple models (Claude, GPT-4, etc.) |
 | **Zhipu**        | 200K tokens/month   | Best for Chinese users                |
+| **Z.ai**         | Competitive pricing | GLM models, high performance          |
 | **Brave Search** | 2000 queries/month  | Web search functionality              |
 | **Groq**         | Free tier available | Fast inference (Llama, Mixtral)       |
 

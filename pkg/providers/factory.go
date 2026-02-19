@@ -1,21 +1,42 @@
 package providers
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/sipeed/picoclaw/pkg/auth"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/providers/zai"
 )
 
 const defaultAnthropicAPIBase = "https://api.anthropic.com/v1"
 
 var getCredential = auth.GetCredential
 
+// NewZAIProvider creates a new Z.ai provider
+func NewZAIProvider(apiKey, apiBase, proxy string) LLMProvider {
+	return zaiProviderAdapter{delegate: zai.NewProvider(apiKey, apiBase, proxy)}
+}
+
+// zaiProviderAdapter adapts the zai.Provider to LLMProvider interface
+type zaiProviderAdapter struct {
+	delegate *zai.Provider
+}
+
+func (a zaiProviderAdapter) Chat(ctx context.Context, messages []Message, tools []ToolDefinition, model string, options map[string]interface{}) (*LLMResponse, error) {
+	return a.delegate.Chat(ctx, messages, tools, model, options)
+}
+
+func (a zaiProviderAdapter) GetDefaultModel() string {
+	return a.delegate.GetDefaultModel()
+}
+
 type providerType int
 
 const (
 	providerTypeHTTPCompat providerType = iota
+	providerTypeZAI
 	providerTypeClaudeAuth
 	providerTypeCodexAuth
 	providerTypeCodexCLIToken
@@ -137,6 +158,17 @@ func resolveProviderSelection(cfg *config.Config) (providerSelection, error) {
 				if sel.apiBase == "" {
 					sel.apiBase = "https://open.bigmodel.cn/api/paas/v4"
 				}
+			}
+		case "zai":
+			if cfg.Providers.ZAI.APIKey != "" {
+				sel.providerType = providerTypeZAI
+				sel.apiKey = cfg.Providers.ZAI.APIKey
+				sel.apiBase = cfg.Providers.ZAI.APIBase
+				sel.proxy = cfg.Providers.ZAI.Proxy
+				if sel.apiBase == "" {
+					sel.apiBase = "https://api.z.ai/api/coding/paas/v4/chat/completions"
+				}
+				return sel, nil
 			}
 		case "gemini", "google":
 			if cfg.Providers.Gemini.APIKey != "" {
@@ -281,6 +313,15 @@ func resolveProviderSelection(cfg *config.Config) (providerSelection, error) {
 			if sel.apiBase == "" {
 				sel.apiBase = "https://open.bigmodel.cn/api/paas/v4"
 			}
+		case strings.HasPrefix(model, "zai/") && cfg.Providers.ZAI.APIKey != "":
+			sel.providerType = providerTypeZAI
+			sel.apiKey = cfg.Providers.ZAI.APIKey
+			sel.apiBase = cfg.Providers.ZAI.APIBase
+			sel.proxy = cfg.Providers.ZAI.Proxy
+			if sel.apiBase == "" {
+				sel.apiBase = "https://api.z.ai/api/coding/paas/v4/chat/completions"
+			}
+			return sel, nil
 		case (strings.Contains(lowerModel, "groq") || strings.HasPrefix(model, "groq/")) && cfg.Providers.Groq.APIKey != "":
 			sel.apiKey = cfg.Providers.Groq.APIKey
 			sel.apiBase = cfg.Providers.Groq.APIBase
@@ -340,6 +381,8 @@ func CreateProvider(cfg *config.Config) (LLMProvider, error) {
 	}
 
 	switch sel.providerType {
+	case providerTypeZAI:
+		return NewZAIProvider(sel.apiKey, sel.apiBase, sel.proxy), nil
 	case providerTypeClaudeAuth:
 		return createClaudeAuthProvider(sel.apiBase)
 	case providerTypeCodexAuth:

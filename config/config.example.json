@@ -114,6 +114,10 @@
     "ollama": {
       "api_key": "",
       "api_base": "http://localhost:11434/v1"
+    },
+    "zai": {
+      "api_key": "YOUR_ZAI_API_KEY",
+      "api_base": "https://api.z.ai/api/coding/paas/v4/chat/completions"
     }
   },
   "tools": {
