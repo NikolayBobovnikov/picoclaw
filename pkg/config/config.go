@@ -54,6 +54,7 @@ type Config struct {
 	Heartbeat      HeartbeatConfig      `json:"heartbeat"`
 	Devices        DevicesConfig        `json:"devices"`
 	Observability  ObservabilityConfig  `json:"observability,omitempty"`
+	MCP            MCPConfig            `json:"mcp,omitempty"`
 	mu             sync.RWMutex
 }
 
@@ -336,6 +337,26 @@ type ObservabilityConfig struct {
 	DebugComponents []string `json:"debug_components,omitempty" env:"PICOCLAW_OBSERVABILITY_DEBUG_COMPONENTS"`
 	// TraceRecorder specifies the type of span recorder ("default", "memory")
 	TraceRecorder string `json:"trace_recorder,omitempty" env:"PICOCLAW_OBSERVABILITY_TRACE_RECORDER"`
+}
+
+// MCPConfig configures Model Context Protocol servers
+type MCPConfig struct {
+	// Servers is a list of MCP servers to connect to
+	Servers []MCPServerConfig `json:"servers,omitempty"`
+}
+
+// MCPServerConfig configures a single MCP server
+type MCPServerConfig struct {
+	// Name is a unique identifier for this MCP server
+	Name string `json:"name"`
+	// Command is the executable to run (e.g., "npx")
+	Command string `json:"command"`
+	// Args are command-line arguments
+	Args []string `json:"args,omitempty"`
+	// Env are environment variables to pass to the server process
+	Env []string `json:"env,omitempty"`
+	// Enabled determines if this server should be started
+	Enabled bool `json:"enabled,omitempty" env:"PICOCLAW_MCP_{name}_ENABLED"`
 }
 
 func DefaultConfig() *Config {
