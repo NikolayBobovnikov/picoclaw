@@ -16,6 +16,7 @@ LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.gitCommit=$(GIT_COMMIT) -X 
 # Go variables
 GO?=go
 GOFLAGS?=-v -tags stdjson
+GOSUMDB?=sum.golang.org
 
 # Installation
 INSTALL_PREFIX?=$(HOME)/.local
@@ -69,14 +70,14 @@ all: build
 generate:
 	@echo "Run generate..."
 	@rm -r ./$(CMD_DIR)/workspace 2>/dev/null || true
-	@$(GO) generate ./...
+	@GOSUMDB=$(GOSUMDB) $(GO) generate ./...
 	@echo "Run generate complete"
 
 ## build: Build the picoclaw binary for current platform
 build: generate
 	@echo "Building $(BINARY_NAME) for $(PLATFORM)/$(ARCH)..."
 	@mkdir -p $(BUILD_DIR)
-	@$(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BINARY_PATH) ./$(CMD_DIR)
+	@GOSUMDB=$(GOSUMDB) $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BINARY_PATH) ./$(CMD_DIR)
 	@echo "Build complete: $(BINARY_PATH)"
 	@ln -sf $(BINARY_NAME)-$(PLATFORM)-$(ARCH) $(BUILD_DIR)/$(BINARY_NAME)
 
@@ -84,12 +85,12 @@ build: generate
 build-all: generate
 	@echo "Building for multiple platforms..."
 	@mkdir -p $(BUILD_DIR)
-	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./$(CMD_DIR)
-	GOOS=linux GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./$(CMD_DIR)
-	GOOS=linux GOARCH=loong64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-loong64 ./$(CMD_DIR)
-	GOOS=linux GOARCH=riscv64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64 ./$(CMD_DIR)
-	GOOS=darwin GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./$(CMD_DIR)
-	GOOS=windows GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe ./$(CMD_DIR)
+	@GOSUMDB=$(GOSUMDB) GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./$(CMD_DIR)
+	@GOSUMDB=$(GOSUMDB) GOOS=linux GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 ./$(CMD_DIR)
+	@GOSUMDB=$(GOSUMDB) GOOS=linux GOARCH=loong64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-loong64 ./$(CMD_DIR)
+	@GOSUMDB=$(GOSUMDB) GOOS=linux GOARCH=riscv64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64 ./$(CMD_DIR)
+	@GOSUMDB=$(GOSUMDB) GOOS=darwin GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 ./$(CMD_DIR)
+	@GOSUMDB=$(GOSUMDB) GOOS=windows GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe ./$(CMD_DIR)
 	@echo "All builds complete"
 
 ## install: Install picoclaw to system and copy builtin skills
@@ -124,25 +125,26 @@ clean:
 
 ## vet: Run go vet for static analysis
 vet:
-	@$(GO) vet ./...
+	@GOSUMDB=$(GOSUMDB) $(GO) vet ./...
 
-## fmt: Format Go code
+## test: Run tests
 test:
-	@$(GO) test ./...
+	@echo "Running tests..."
+	@GOSUMDB=$(GOSUMDB) $(GO) test ./... -v 2>&1 | head -100
 
 ## fmt: Format Go code
 fmt:
-	@$(GO) fmt ./...
+	@GOSUMDB=$(GOSUMDB) $(GO) fmt ./...
 
 ## deps: Download dependencies
 deps:
-	@$(GO) mod download
-	@$(GO) mod verify
+	@GOSUMDB=$(GOSUMDB) $(GO) mod download
+	@GOSUMDB=$(GOSUMDB) $(GO) mod verify
 
 ## update-deps: Update dependencies
 update-deps:
-	@$(GO) get -u ./...
-	@$(GO) mod tidy
+	@GOSUMDB=$(GOSUMDB) $(GO) get -u ./...
+	@GOSUMDB=$(GOSUMDB) $(GO) mod tidy
 
 ## check: Run vet, fmt, and verify dependencies
 check: deps fmt vet test
