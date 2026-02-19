@@ -44,16 +44,17 @@ func (f *FlexibleStringSlice) UnmarshalJSON(data []byte) error {
 }
 
 type Config struct {
-	Agents    AgentsConfig    `json:"agents"`
-	Bindings  []AgentBinding  `json:"bindings,omitempty"`
-	Session   SessionConfig   `json:"session,omitempty"`
-	Channels  ChannelsConfig  `json:"channels"`
-	Providers ProvidersConfig `json:"providers"`
-	Gateway   GatewayConfig   `json:"gateway"`
-	Tools     ToolsConfig     `json:"tools"`
-	Heartbeat HeartbeatConfig `json:"heartbeat"`
-	Devices   DevicesConfig   `json:"devices"`
-	mu        sync.RWMutex
+	Agents         AgentsConfig         `json:"agents"`
+	Bindings       []AgentBinding       `json:"bindings,omitempty"`
+	Session        SessionConfig        `json:"session,omitempty"`
+	Channels       ChannelsConfig       `json:"channels"`
+	Providers      ProvidersConfig      `json:"providers"`
+	Gateway        GatewayConfig        `json:"gateway"`
+	Tools          ToolsConfig          `json:"tools"`
+	Heartbeat      HeartbeatConfig      `json:"heartbeat"`
+	Devices        DevicesConfig        `json:"devices"`
+	Observability  ObservabilityConfig  `json:"observability,omitempty"`
+	mu             sync.RWMutex
 }
 
 type AgentsConfig struct {
@@ -321,6 +322,22 @@ type ToolsConfig struct {
 	Exec ExecConfig      `json:"exec"`
 }
 
+// ObservabilityConfig configures logging, tracing, and debug settings
+type ObservabilityConfig struct {
+	// LogFile is the path to the log file for JSON logging
+	LogFile string `json:"log_file,omitempty" env:"PICOCLAW_OBSERVABILITY_LOG_FILE"`
+	// LogLevel is the global log level (debug, info, warn, error)
+	LogLevel string `json:"log_level,omitempty" env:"PICOCLAW_OBSERVABILITY_LOG_LEVEL"`
+	// ComponentLevels sets per-component log levels
+	ComponentLevels map[string]string `json:"component_levels,omitempty"`
+	// EnableTracing enables distributed tracing with trace IDs
+	EnableTracing bool `json:"enable_tracing,omitempty" env:"PICOCLAW_OBSERVABILITY_ENABLE_TRACING"`
+	// DebugComponents is a list of components to enable debug logging for
+	DebugComponents []string `json:"debug_components,omitempty" env:"PICOCLAW_OBSERVABILITY_DEBUG_COMPONENTS"`
+	// TraceRecorder specifies the type of span recorder ("default", "memory")
+	TraceRecorder string `json:"trace_recorder,omitempty" env:"PICOCLAW_OBSERVABILITY_TRACE_RECORDER"`
+}
+
 func DefaultConfig() *Config {
 	return &Config{
 		Agents: AgentsConfig{
@@ -446,6 +463,11 @@ func DefaultConfig() *Config {
 		Devices: DevicesConfig{
 			Enabled:    false,
 			MonitorUSB: true,
+		},
+		Observability: ObservabilityConfig{
+			LogLevel:       "info",
+			EnableTracing:  true,
+			TraceRecorder:  "default",
 		},
 	}
 }
