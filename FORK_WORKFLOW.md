@@ -1,6 +1,6 @@
 # Picoclaw Fork Workflow Guide
 
-**Fork:** https://github.com/NikolayBobovnikov/picoclaw
+**Fork (origin):** https://github.com/NikolayBobovnikov/picoclaw
 **Upstream:** https://github.com/sipeed/picoclaw
 
 ---
@@ -8,8 +8,8 @@
 ## Remote Configuration
 
 ```
-origin    https://github.com/sipeed/picoclaw.git (fetch)    # Upstream
-fork      git@github.com:NikolayBobovnikov/picoclaw.git (fetch/push)  # Your fork
+origin    git@github.com:NikolayBobovnikov/picoclaw.git (fetch/push)  # Your fork (main)
+upstream  https://github.com/sipeed/picoclaw.git (fetch)              # Upstream
 ```
 
 ---
@@ -20,24 +20,24 @@ fork      git@github.com:NikolayBobovnikov/picoclaw.git (fetch/push)  # Your for
 
 ```bash
 # Fetch upstream changes
-git fetch origin
+git fetch upstream
 
 # Merge upstream/main into your branch (or rebase)
 git checkout dev/local
-git merge origin/main
+git merge upstream/main
 
 # OR rebase for cleaner history
-git rebase origin/main
+git rebase upstream/main
 ```
 
 ### 2. Push Changes to Your Fork
 
 ```bash
-# Push your branch to fork
-git push fork dev/local
+# Push your branch to origin (your fork)
+git push origin dev/local
 
 # Force push if you rebased (careful!)
-git push fork dev/local --force-with-lease
+git push origin dev/local --force-with-lease
 ```
 
 ### 3. Create Pull Request to Upstream
@@ -59,15 +59,15 @@ git add .
 git commit -m "feat: description"
 
 # Push to fork
-git push fork feature/your-feature-name
+git push origin feature/your-feature-name
 ```
 
 ### Syncing Feature Branch with Upstream
 
 ```bash
-git fetch origin
-git rebase origin/main
-git push fork feature/your-feature-name --force-with-lease
+git fetch upstream
+git rebase upstream/main
+git push origin feature/your-feature-name --force-with-lease
 ```
 
 ---
@@ -76,9 +76,9 @@ git push fork feature/your-feature-name --force-with-lease
 
 | Action | Command |
 |--------|---------|
-| Pull upstream changes | `git fetch origin && git merge origin/main` |
-| Push to your fork | `git push fork dev/local` |
-| Sync fork with upstream | `git fetch origin && git push fork origin/main:main` |
+| Pull upstream changes | `git fetch upstream && git merge upstream/main` |
+| Push to your fork | `git push origin dev/local` |
+| Sync fork with upstream | `git fetch upstream && git push origin upstream/main:main` |
 | Create PR | Visit GitHub compare page |
 | View remotes | `git remote -v` |
 
@@ -86,7 +86,7 @@ git push fork feature/your-feature-name --force-with-lease
 
 ## Notes
 
-- `origin` = upstream (sipeed/picoclaw) - fetch only
-- `fork` = your fork (NikolayBobovnikov/picoclaw) - fetch and push
+- `origin` = your fork (NikolayBobovnikov/picoclaw) - fetch and push
+- `upstream` = upstream (sipeed/picoclaw) - fetch only
 - Work on `dev/local` branch for development
 - Use `--force-with-lease` instead of `--force` for safer rebase pushes
