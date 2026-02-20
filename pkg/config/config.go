@@ -44,17 +44,17 @@ func (f *FlexibleStringSlice) UnmarshalJSON(data []byte) error {
 }
 
 type Config struct {
-	Agents         AgentsConfig         `json:"agents"`
-	Bindings       []AgentBinding       `json:"bindings,omitempty"`
-	Session        SessionConfig        `json:"session,omitempty"`
-	Channels       ChannelsConfig       `json:"channels"`
-	Providers      ProvidersConfig      `json:"providers"`
-	Gateway        GatewayConfig        `json:"gateway"`
-	Tools          ToolsConfig          `json:"tools"`
-	Heartbeat      HeartbeatConfig      `json:"heartbeat"`
-	Devices        DevicesConfig        `json:"devices"`
-	Observability  ObservabilityConfig  `json:"observability,omitempty"`
-	MCP            MCPConfig            `json:"mcp,omitempty"`
+	Agents        AgentsConfig        `json:"agents"`
+	Bindings      []AgentBinding      `json:"bindings,omitempty"`
+	Session       SessionConfig       `json:"session,omitempty"`
+	Channels      ChannelsConfig      `json:"channels"`
+	Providers     ProvidersConfig     `json:"providers"`
+	Gateway       GatewayConfig       `json:"gateway"`
+	Tools         ToolsConfig         `json:"tools"`
+	Heartbeat     HeartbeatConfig     `json:"heartbeat"`
+	Devices       DevicesConfig       `json:"devices"`
+	Observability ObservabilityConfig `json:"observability,omitempty"`
+	MCP           MCPConfig           `json:"mcp,omitempty"`
 
 	// LLM Registry - define providers and models once, reference by name
 	LLMRegistry LLMRegistryConfig `json:"llm_registry,omitempty"`
@@ -371,10 +371,10 @@ type MCPServerConfig struct {
 
 // LLMProviderConfig represents an LLM provider configuration (API credentials, endpoint)
 type LLMProviderConfig struct {
-	APIKey   string            `json:"api_key" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_API_KEY"`
-	APIBase  string            `json:"api_base" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_API_BASE"`
-	Proxy    string            `json:"proxy,omitempty" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_PROXY"`
-	Headers  map[string]string `json:"headers,omitempty"`
+	APIKey  string            `json:"api_key" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_API_KEY"`
+	APIBase string            `json:"api_base" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_API_BASE"`
+	Proxy   string            `json:"proxy,omitempty" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_PROXY"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 // LLMModelConfig represents a specific model configuration (inherits from provider)
@@ -545,9 +545,9 @@ func DefaultConfig() *Config {
 			MonitorUSB: true,
 		},
 		Observability: ObservabilityConfig{
-			LogLevel:       "info",
-			EnableTracing:  true,
-			TraceRecorder:  "default",
+			LogLevel:      "info",
+			EnableTracing: true,
+			TraceRecorder: "default",
 		},
 	}
 }
@@ -686,4 +686,51 @@ func expandHome(path string) string {
 		return home
 	}
 	return path
+}
+
+// LLM Registry Methods
+
+// ResolveLLM resolves an LLM reference to a full LLMConfig
+func (c *Config) ResolveLLM(ref *LLMReference) (*LLMConfig, error) {
+	if ref == nil {
+		return nil, fmt.Errorf("LLM reference is nil")
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	model, exists := c.LLMRegistry.Models[ref.Model]
+	if !exists {
+		return nil, fmt.Errorf("model '%s' not found in registry", ref.Model)
+	}
+
+	provider, exists := c.LLMRegistry.Providers[model.Provider]
+	if !exists {
+		return nil, fmt.Errorf("provider '%s' not found in registry", model.Provider)
+	}
+
+	// Expand environment variables in API key
+	apiKey := expandEnvVars(provider.APIKey)
+
+	// Merge provider and model configs
+	resolved := &LLMConfig{
+		Provider:    model.Provider,
+		APIKey:      apiKey,
+		APIBase:     provider.APIBase,
+		Proxy:       provider.Proxy,
+		Model:       model.Model,
+		MaxTokens:   model.MaxTokens,
+		Temperature: model.Temperature,
+		Headers:     provider.Headers,
+	}
+
+	return resolved, nil
+}
+
+// expandEnvVars expands environment variables in a string
+// Supports ${VAR_NAME} syntax
+func expandEnvVars(value string) string {
+	return os.Expand(value, func(key string) string {
+		return os.Getenv(key)
+	})
 }
