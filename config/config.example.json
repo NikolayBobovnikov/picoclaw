@@ -1,9 +1,54 @@
 {
+  "_comment_llmRegistry": "OPTION 1: LLM Registry Pattern (recommended for centralized model management)",
+  "llmRegistry": {
+    "providers": {
+      "zai": {
+        "provider": "zai",
+        "apiKey": "${ZAI_API_KEY}",
+        "endpoint": "https://api.z.ai/api/coding/paas/v4/chat/completions"
+      },
+      "anthropic": {
+        "provider": "anthropic",
+        "apiKey": "${ANTHROPIC_API_KEY}",
+        "endpoint": "https://api.anthropic.com/v1/messages"
+      },
+      "openai": {
+        "provider": "openai",
+        "apiKey": "${OPENAI_API_KEY}",
+        "endpoint": "https://api.openai.com/v1/chat/completions"
+      }
+    },
+    "models": {
+      "glm-4-plus": {
+        "provider": "zai",
+        "model": "GLM-4-Plus",
+        "timeout": 10000,
+        "maxTokens": 8192,
+        "temperature": 0.7
+      },
+      "claude-opus": {
+        "provider": "anthropic",
+        "model": "claude-opus-4-5-20251101",
+        "timeout": 10000,
+        "maxTokens": 8192,
+        "temperature": 0.7
+      },
+      "gpt-4": {
+        "provider": "openai",
+        "model": "gpt-4-turbo",
+        "timeout": 10000,
+        "maxTokens": 8192,
+        "temperature": 0.7
+      }
+    }
+  },
+  "_comment_agents": "OPTION 2: Legacy Provider Format (providers section at bottom of file)",
   "agents": {
     "defaults": {
       "workspace": "~/.picoclaw/workspace",
       "restrict_to_workspace": true,
-      "model": "glm-4.7",
+      "model": "glm-4-plus",
+      "_comment_model": "When using llmRegistry, reference the model key (e.g., 'glm-4-plus'). For legacy format, use model name directly (e.g., 'glm-4.7')",
       "max_tokens": 8192,
       "temperature": 0.7,
       "max_tool_iterations": 20

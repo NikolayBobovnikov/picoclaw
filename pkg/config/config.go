@@ -55,7 +55,14 @@ type Config struct {
 	Devices        DevicesConfig        `json:"devices"`
 	Observability  ObservabilityConfig  `json:"observability,omitempty"`
 	MCP            MCPConfig            `json:"mcp,omitempty"`
-	mu             sync.RWMutex
+
+	// LLM Registry - define providers and models once, reference by name
+	LLMRegistry LLMRegistryConfig `json:"llm_registry,omitempty"`
+
+	// Component LLM references - reference models by name
+	LLMComponents LLMComponentsConfig `json:"llm_components,omitempty"`
+
+	mu sync.RWMutex
 }
 
 type AgentsConfig struct {
@@ -358,6 +365,56 @@ type MCPServerConfig struct {
 	Env []string `json:"env,omitempty"`
 	// Enabled determines if this server should be started
 	Enabled bool `json:"enabled,omitempty" env:"PICOCLAW_MCP_{name}_ENABLED"`
+}
+
+// LLM Registry Types
+
+// LLMProviderConfig represents an LLM provider configuration (API credentials, endpoint)
+type LLMProviderConfig struct {
+	APIKey   string            `json:"api_key" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_API_KEY"`
+	APIBase  string            `json:"api_base" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_API_BASE"`
+	Proxy    string            `json:"proxy,omitempty" env:"PICOCLAW_LLM_REGISTRY_PROVIDERS_{{.Name}}_PROXY"`
+	Headers  map[string]string `json:"headers,omitempty"`
+}
+
+// LLMModelConfig represents a specific model configuration (inherits from provider)
+type LLMModelConfig struct {
+	Provider    string  `json:"provider" validate:"required"` // Reference to provider name
+	Model       string  `json:"model" validate:"required"`    // Model identifier
+	MaxTokens   int     `json:"max_tokens,omitempty"`         // Max output tokens
+	Temperature float64 `json:"temperature,omitempty"`        // Sampling temperature
+}
+
+// LLMReference is a reference to a configured model
+type LLMReference struct {
+	Model string `json:"model" validate:"required"` // Reference to model name
+}
+
+// LLMConfig represents a full LLM configuration (resolved from provider + model)
+type LLMConfig struct {
+	Provider    string            `json:"provider" validate:"required"`
+	APIKey      string            `json:"api_key"`
+	APIBase     string            `json:"api_base"`
+	Proxy       string            `json:"proxy,omitempty"`
+	Model       string            `json:"model"`
+	MaxTokens   int               `json:"max_tokens"`
+	Temperature float64           `json:"temperature"`
+	Headers     map[string]string `json:"headers,omitempty"`
+}
+
+// LLMRegistryConfig holds the registry of providers and models
+type LLMRegistryConfig struct {
+	Providers map[string]LLMProviderConfig `json:"providers"`
+	Models    map[string]LLMModelConfig    `json:"models"`
+}
+
+// LLMComponentsConfig holds LLM references for different components
+type LLMComponentsConfig struct {
+	// Default LLM reference for general agent operations
+	Default *LLMReference `json:"default,omitempty"`
+
+	// Subagent LLM reference for subagent operations
+	Subagent *LLMReference `json:"subagent,omitempty"`
 }
 
 func DefaultConfig() *Config {
